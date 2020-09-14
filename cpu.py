@@ -15,6 +15,11 @@ class CPU:
         self.memory_loc = 0
         self.SP = 7
         self.is_on = True
+        self.FL = {
+            "E": None,
+            "L": None,
+            "G": None
+        }
         self.instructions = {
             "LDI": 0b10000010,  # Set the value of a register to an integer.
             # Print numeric value stored in the given register.
@@ -37,7 +42,11 @@ class CPU:
 
             "CALL": 0b01010000,
             "RET": 0b00010001,
-            "ADD": 0b10100000
+            "ADD": 0b10100000,
+            "CMP": 0b10100111,
+            "JMP": 0b01010100,
+            "JEQ": 0b01010101,
+            "JNE": 0b01010110
 
         }
 
@@ -111,6 +120,7 @@ class CPU:
         """
 
         while self.is_on:
+
             instruction = self.ram[self.pc]
 
             if instruction == self.instructions["LDI"]:
@@ -176,15 +186,100 @@ class CPU:
                 given_reg = self.ram[self.pc + 1]
 
                 self.register[self.SP] -= 1
-                print()
                 self.ram[self.register[self.SP]] = self.pc + 2
 
                 self.pc = self.register[given_reg]
-                print(self.ram[self.pc])
+
             elif instruction == self.instructions['RET']:
                 self.pc = self.ram[self.register[self.SP]]
                 self.register[self.SP] += 1
 
+            elif instruction == self.instructions['CMP']:
+                '''
+                This is an instruction handled by the ALU.
+                CMP registerA registerB
+
+                Compare the values in two registers.
+
+                If they are equal, set the Equal E flag to 1, otherwise set it to 0.
+
+                If registerA is less than registerB, set the Less-than L flag to 1, otherwise set it to 0.
+
+                If registerA is greater than registerB, set the Greater-than G flag to 1, otherwise set it to 0.
+
+
+                '''
+                R1 = self.ram[self.pc + 1]
+                R2 = self.ram[self.pc + 2]
+
+                reg1_val = self.register[R1]
+                reg2_val = self.register[R2]
+
+                if reg1_val == reg2_val:
+                    self.FL["E"] = 1
+
+                else:
+                    self.FL["E"] = 0
+
+                if reg1_val < reg2_val:
+                    self.FL["L"] = 1
+                else:
+                    self.FL["L"] = 0
+
+                if reg1_val > reg2_val:
+                    self.FL["G"] = 1
+
+                else:
+                    self.FL["G"] = 0
+
+                self.pc += 3
+
+            elif instruction == self.instructions['JMP']:
+
+                '''
+                    JMP
+                    JMP register
+
+                    Jump to the address stored in the given register.
+
+                    Set the PC to the address stored in the given register.
+
+                    Machine code:
+                '''
+
+                reg_address = self.ram[self.pc + 1]
+
+                self.pc = self.register[reg_address]
+
+            elif instruction == self.instructions['JEQ']:
+                '''
+                JEQ register
+
+                If equal flag is set (true), jump to the address stored in the given register.
+                '''
+
+                if self.FL["E"] == 1:
+                    reg_address = self.ram[self.pc + 1]
+                    self.pc = self.register[reg_address]
+
+                else:
+                    self.pc += 2
+
+            elif instruction == self.instructions['JNE']:
+                '''
+                    JNE
+                    JNE register
+
+                    If E flag is clear (false, 0), jump to the address stored in the given register.
+                '''
+                if self.FL["E"] == 0:
+
+                    reg_address = self.ram[self.pc + 1]
+                    self.pc = self.register[reg_address]
+
+                else:
+                    self.pc += 2
+                pass
             elif instruction not in self.instructions:
 
                 print(f"Unknown instruction {instruction}")
